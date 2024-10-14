@@ -1,94 +1,76 @@
 pipeline {
     agent any
 
+    environment {
+        // Variables de entorno
+        VENV_DIR = "${env.WORKSPACE}/venv" // Directorio del entorno virtual
+        DB_NAME = "db.sqlite3" // Nombre de la base de datos SQLite
+    }
+
     stages {
-        stage('Checkout') {
+        stage('Preparación') {
             steps {
-                git url: 'https://github.com/JohanC25/django_pipeline_test.git', branch: 'master'
-            }
-        }
+                script {
+                    // Crear un entorno virtual
+                    sh "python3 -m venv ${VENV_DIR}"
 
-        stage('Verificar Python y pip') {
-            steps {
-                withEnv(['PATH+CUSTOM=C:\\Users\\johan\\AppData\\Local\\Programs\\Python\\Python312;C:\\Users\\johan\\AppData\\Local\\Programs\\Python\\Python312\\Scripts']) {
-                    bat '''
-                    echo Verificando instalación de Python y pip...
-                    python --version
-                    pip --version
-                    '''
-                }
-            }
-        }
-
-        stage('Instalar dependencias') {
-            steps {
-                withEnv(['PATH+CUSTOM=C:\\Users\\johan\\AppData\\Local\\Programs\\Python\\Python312;C:\\Users\\johan\\AppData\\Local\\Programs\\Python\\Python312\\Scripts']) {
-                    bat '''
-                    echo Instalando dependencias...
-                    pip install --upgrade pip
+                    // Activar el entorno virtual y instalar dependencias
+                    sh """
+                    source ${VENV_DIR}/bin/activate
                     pip install -r requirements.txt
-                    '''
+                    """
                 }
             }
         }
 
-        stage('Migrar') {
+        stage('Migraciones') {
             steps {
-                withEnv(['PATH+CUSTOM=C:\\Users\\johan\\AppData\\Local\\Programs\\Python\\Python312;C:\\Users\\johan\\AppData\\Local\\Programs\\Python\\Python312\\Scripts']) {
-                    bat '''
-                    echo Aplicando migraciones...
+                script {
+                    // Activar el entorno virtual y realizar migraciones
+                    sh """
+                    source ${VENV_DIR}/bin/activate
+                    python manage.py makemigrations
                     python manage.py migrate
-                    '''
+                    """
                 }
             }
         }
 
-        stage('Pruebas Ficticias') {
+        stage('Recopilación de Archivos Estáticos') {
             steps {
-                withEnv(['PATH+CUSTOM=C:\\Users\\johan\\AppData\\Local\\Programs\\Python\\Python312;C:\\Users\\johan\\AppData\\Local\\Programs\\Python\\Python312\\Scripts']) {
-                    bat '''
-                    echo No se encontraron pruebas definidas. Ejecutando prueba ficticia...
-                    python -c "print('Prueba ficticia ejecutada exitosamente.')"
-                    '''
+                script {
+                    // Recopilar archivos estáticos
+                    sh """
+                    source ${VENV_DIR}/bin/activate
+                    python manage.py collectstatic --noinput
+                    """
                 }
             }
         }
 
-        stage('Análisis de Código') {
+        stage('Ejecutar Pruebas') {
             steps {
-                withEnv(['PATH+CUSTOM=C:\\Users\\johan\\AppData\\Local\\Programs\\Python\\Python312;C:\\Users\\johan\\AppData\\Local\\Programs\\Python\\Python312\\Scripts']) {
-                    bat '''
-                    echo Instalando Pylint...
-                    pip install pylint
-
-                    echo Ejecutando análisis de código...
-                    pylint base/
-                    '''
-                }
-            }
-        }
-
-        stage('Simulación de Despliegue') {
-            steps {
-                withEnv(['PATH+CUSTOM=C:\\Users\\johan\\AppData\\Local\\Programs\\Python\\Python312;C:\\Users\\johan\\AppData\\Local\\Programs\\Python\\Python312\\Scripts']) {
-                    bat '''
-                    echo Simulando despliegue...
-                    python manage.py runserver 0.0.0.0:8000 --noreload &
-                    '''
+                script {
+                    // Activar el entorno virtual y ejecutar pruebas
+                    sh """
+                    source ${VENV_DIR}/bin/activate
+                    python manage.py test
+                    """
                 }
             }
         }
     }
 
     post {
-        always {
-            echo 'Limpieza después de la ejecución...'
-        }
         success {
-            echo 'Pipeline completado exitosamente.'
+            echo '¡El pipeline se ejecutó con éxito!'
         }
         failure {
-            echo 'Pipeline falló.'
+            echo 'El pipeline falló.'
+        }
+        always {
+            // Limpiar el entorno virtual si es necesario
+            sh "rm -rf ${VENV_DIR}"
         }
     }
 }
