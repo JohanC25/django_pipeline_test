@@ -1,67 +1,66 @@
 pipeline {
     agent any
-    
+
     stages {
+        stage('Checkout') {
+            steps {
+                // Checkout del código desde el repositorio Git
+                git url: 'https://github.com/JohanC25/django_pipeline_test.git', branch: 'master'
+            }
+        }
+
         stage('Instalar dependencias') {
             steps {
-                script {
-                    // Crear un entorno virtual en Windows
-                    sh 'python -m venv venv'
-                    
-                    // Activar el entorno virtual en Windows
-                    sh 'venv\\Scripts\\activate'
-                    
-                    // Instalar las dependencias
-                    sh 'pip install -r requirements.txt'
-                }
+                // Usar 'bat' para ejecutar comandos en Windows
+                bat '''
+                echo Instalando dependencias...
+                pip install --upgrade pip
+                pip install -r requirements.txt
+                '''
             }
         }
-        
+
         stage('Migrar y Testear') {
             steps {
-                script {
-                    // Aplicar migraciones
-                    sh 'venv\\Scripts\\python manage.py migrate'
-                    
-                    // Ejecutar pruebas
-                    sh 'venv\\Scripts\\python manage.py test'
-                }
+                // Ejecutar las migraciones y pruebas
+                bat '''
+                echo Aplicando migraciones...
+                python manage.py migrate
+
+                echo Ejecutando pruebas...
+                python manage.py test
+                '''
             }
         }
-        
+
         stage('Análisis de Código') {
             steps {
-                script {
-                    // Usar flake8 para análisis de estilo y errores
-                    sh 'venv\\Scripts\\pip install flake8'
-                    sh 'venv\\Scripts\\flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics'
-                }
+                // Análisis de código con pylint, por ejemplo
+                bat '''
+                echo Ejecutando análisis de código...
+                pylint myapp/
+                '''
             }
         }
-        
+
         stage('Simulación de Despliegue') {
             steps {
-                script {
-                    // Simulación del empaquetado de la aplicación para producción
-                    echo 'Simulando el empaquetado para producción...'
-                    
-                    // Crear el paquete .tar.gz como si estuvieras preparando el proyecto para el despliegue
-                    sh 'tar -czf django_project.tar.gz .'
-                    
-                    // Aquí se podría realizar un despliegue real si se tiene configurada infraestructura
-                    echo 'Despliegue simulado completo'
-                }
+                // Simulación de un despliegue local
+                bat '''
+                echo Simulando despliegue...
+                python manage.py runserver 0.0.0.0:8000
+                '''
             }
         }
     }
-    
+
     post {
         always {
-            // Limpiar los archivos temporales si es necesario
             echo 'Limpieza después de la ejecución...'
+            // Opcionalmente puedes agregar pasos de limpieza si lo necesitas
         }
         success {
-            echo 'Pipeline ejecutado con éxito!'
+            echo 'Pipeline completado exitosamente.'
         }
         failure {
             echo 'Pipeline falló.'
