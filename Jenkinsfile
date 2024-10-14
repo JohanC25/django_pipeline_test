@@ -1,76 +1,58 @@
 pipeline {
-    agent any
-
-    environment {
-        // Variables de entorno
-        VENV_DIR = "${env.WORKSPACE}/venv" // Directorio del entorno virtual
-        DB_NAME = "db.sqlite3" // Nombre de la base de datos SQLite
-    }
+    agent any 
 
     stages {
-        stage('Preparación') {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        stage('Verificar Python y pip') {
+            steps {
+                bat "python --version"
+                bat "pip --version"
+            }
+        }
+        stage('Instalar dependencias') {
+            steps {
+                bat "pip install -r requirements.txt"
+            }
+        }
+        stage('Verificar Archivos Estáticos') {
             steps {
                 script {
-                    // Crear un entorno virtual
-                    sh "python3 -m venv ${VENV_DIR}"
-
-                    // Activar el entorno virtual y instalar dependencias
-                    sh """
-                    source ${VENV_DIR}/bin/activate
-                    pip install -r requirements.txt
-                    """
+                    def staticDir = 'base/static'
+                    if (!fileExists(staticDir)) {
+                        error "La carpeta de archivos estáticos '${staticDir}' no existe."
+                    }
+                    echo "La carpeta de archivos estáticos '${staticDir}' existe."
                 }
             }
         }
-
-        stage('Migraciones') {
-            steps {
-                script {
-                    // Activar el entorno virtual y realizar migraciones
-                    sh """
-                    source ${VENV_DIR}/bin/activate
-                    python manage.py makemigrations
-                    python manage.py migrate
-                    """
-                }
-            }
-        }
-
-        stage('Recopilación de Archivos Estáticos') {
-            steps {
-                script {
-                    // Recopilar archivos estáticos
-                    sh """
-                    source ${VENV_DIR}/bin/activate
-                    python manage.py collectstatic --noinput
-                    """
-                }
-            }
-        }
-
         stage('Ejecutar Pruebas') {
             steps {
                 script {
-                    // Activar el entorno virtual y ejecutar pruebas
-                    sh """
-                    source ${VENV_DIR}/bin/activate
-                    python manage.py test
-                    """
+                    echo "Ejecutando pruebas..."
+                    bat "python manage.py test" // Reemplazado por la ejecución real de pruebas
                 }
             }
         }
+        stage('Análisis de Código') {
+            steps {
+                echo "Ejecutando análisis de código con Pylint..."
+                bat "pylint base/"
+            }
+        }
+        stage('Simulación de Despliegue') {
+            steps {
+                echo "Simulando despliegue en entorno de staging..."
+                bat "echo 'Despliegue simulado exitosamente.'"
+            }
+        }
     }
-
     post {
-        success {
-            echo '¡El pipeline se ejecutó con éxito!'
-        }
-        failure {
-            echo 'El pipeline falló.'
-        }
         always {
-            // Limpiar el entorno virtual si es necesario
-            sh "rm -rf ${VENV_DIR}"
+            echo 'Limpieza después de la ejecución...'
         }
     }
 }
