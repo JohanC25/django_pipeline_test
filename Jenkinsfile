@@ -30,11 +30,11 @@ pipeline {
             }
         }
 
-        stage('Despliegue') {
+        stage('Generar Artefactos') {
             steps {
                 script {
-                    // Correr el servidor Django en modo producción en Windows
-                    bat 'python manage.py runserver 0.0.0.0:8000 --noreload'
+                    // Crear un archivo ZIP del proyecto
+                    bat 'tar -a -c -f proyecto.zip .'
                 }
             }
         }
