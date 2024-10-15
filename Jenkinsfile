@@ -1,58 +1,55 @@
 pipeline {
-    agent any 
+    agent any
 
     stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
-        stage('Verificar Python y pip') {
-            steps {
-                bat "python --version"
-                bat "pip --version"
-            }
-        }
         stage('Instalar dependencias') {
             steps {
-                bat "pip install -r requirements.txt"
-            }
-        }
-        stage('Verificar Archivos Estáticos') {
-            steps {
                 script {
-                    def staticDir = 'base/static'
-                    if (!fileExists(staticDir)) {
-                        error "La carpeta de archivos estáticos '${staticDir}' no existe."
-                    }
-                    echo "La carpeta de archivos estáticos '${staticDir}' existe."
+                    // Instalación de las dependencias desde requirements.txt
+                    sh 'pip install -r requirements.txt'
                 }
             }
         }
-        stage('Ejecutar Pruebas') {
+
+        stage('Verificar Sintaxis (Linting)') {
             steps {
                 script {
-                    echo "Ejecutando pruebas..."
-                    bat "python manage.py test" // Reemplazado por la ejecución real de pruebas
+                    // Ejecutar flake8 para verificar la sintaxis del código
+                    sh 'pip install flake8'  // Aseguramos que flake8 está instalado
+                    sh 'flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics'
                 }
             }
         }
-        stage('Análisis de Código') {
+
+        stage('Migrar Base de Datos') {
             steps {
-                echo "Ejecutando análisis de código con Pylint..."
-                bat "pylint base/"
+                script {
+                    // Ejecutar las migraciones de la base de datos
+                    sh 'python manage.py migrate'
+                }
             }
         }
-        stage('Simulación de Despliegue') {
+
+        stage('Despliegue') {
             steps {
-                echo "Simulando despliegue en entorno de staging..."
-                bat "echo 'Despliegue simulado exitosamente.'"
+                script {
+                    // Correr el servidor Django en modo producción o construcción de la aplicación
+                    sh 'python manage.py runserver 0.0.0.0:8000 --noreload'
+                }
             }
         }
     }
+
     post {
         always {
-            echo 'Limpieza después de la ejecución...'
+            // Limpiar el workspace después de ejecutar el pipeline
+            cleanWs()
+        }
+        success {
+            echo 'Pipeline ejecutado correctamente.'
+        }
+        failure {
+            echo 'El pipeline ha fallado. Revisa los errores.'
         }
     }
 }
