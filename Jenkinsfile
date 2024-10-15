@@ -5,8 +5,8 @@ pipeline {
         stage('Instalar dependencias') {
             steps {
                 script {
-                    // Instalación de las dependencias desde requirements.txt
-                    sh 'pip install -r requirements.txt'
+                    // Instalación de las dependencias desde requirements.txt en Windows
+                    bat 'pip install -r requirements.txt'
                 }
             }
         }
@@ -14,9 +14,9 @@ pipeline {
         stage('Verificar Sintaxis (Linting)') {
             steps {
                 script {
-                    // Ejecutar flake8 para verificar la sintaxis del código
-                    sh 'pip install flake8'  // Aseguramos que flake8 está instalado
-                    sh 'flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics'
+                    // Ejecutar flake8 para verificar la sintaxis del código en Windows
+                    bat 'pip install flake8'  // Aseguramos que flake8 está instalado
+                    bat 'flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics'
                 }
             }
         }
@@ -24,8 +24,8 @@ pipeline {
         stage('Migrar Base de Datos') {
             steps {
                 script {
-                    // Ejecutar las migraciones de la base de datos
-                    sh 'python manage.py migrate'
+                    // Ejecutar las migraciones de la base de datos en Windows
+                    bat 'python manage.py migrate'
                 }
             }
         }
@@ -33,8 +33,8 @@ pipeline {
         stage('Despliegue') {
             steps {
                 script {
-                    // Correr el servidor Django en modo producción o construcción de la aplicación
-                    sh 'python manage.py runserver 0.0.0.0:8000 --noreload'
+                    // Correr el servidor Django en modo producción en Windows
+                    bat 'python manage.py runserver 0.0.0.0:8000 --noreload'
                 }
             }
         }
