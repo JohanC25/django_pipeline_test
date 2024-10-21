@@ -7,14 +7,16 @@ parameters:
 
 executors:
   python_executor:
-    machine:  # Máquina Linux predeterminada de CircleCI
-      image: ubuntu-2004:202101-01
+    environment:
+      python_version: "<< parameters.python-version >>"
+    machine:
+      image: ubuntu-2004:202101-01  # Entorno Linux compatible con CircleCI
 
 jobs:
   setup:
     executor: python_executor
     steps:
-      - checkout  # Descarga el código del repositorio
+      - checkout
       - run:
           name: Crear y activar entorno virtual
           command: |
@@ -31,7 +33,7 @@ jobs:
 
   lint:
     executor: python_executor
-    parallelism: 2  # Ejecuta 2 instancias en paralelo para el análisis
+    parallelism: 2  # Ejecuta en paralelo
     steps:
       - checkout
       - run:
@@ -69,7 +71,7 @@ jobs:
     executor: python_executor
     steps:
       - run:
-          name: Notificación de éxito en Slack
+          name: Enviar notificación de éxito a Slack
           command: |
             curl -X POST -H 'Content-type: application/json' \
             --data '{"text":"Pipeline completado exitosamente :white_check_mark:"}' $SLACK_WEBHOOK_URL
@@ -78,7 +80,7 @@ jobs:
     executor: python_executor
     steps:
       - run:
-          name: Notificación de fallo en Slack
+          name: Enviar notificación de fallo a Slack
           command: |
             curl -X POST -H 'Content-type: application/json' \
             --data '{"text":"Pipeline fallido :x:"}' $SLACK_WEBHOOK_URL
