@@ -7,10 +7,8 @@ parameters:
 
 executors:
   python_executor:
-    environment:
-      python_version: "<< parameters.python-version >>"
-    machine:
-      image: ubuntu-2004:202101-01  # Entorno Linux compatible con CircleCI
+    machine:  # Usa el entorno de máquina Linux estándar de CircleCI
+      image: ubuntu-2204:current  # Imagen predeterminada compatible con Python
 
 jobs:
   setup:
@@ -33,7 +31,7 @@ jobs:
 
   lint:
     executor: python_executor
-    parallelism: 2  # Ejecuta en paralelo
+    parallelism: 2  # Ejecuta 2 instancias en paralelo
     steps:
       - checkout
       - run:
