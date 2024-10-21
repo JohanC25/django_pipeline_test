@@ -1,85 +1,75 @@
 version: 2.1
 
+parameters:
+  python-version:
+    type: string
+    default: "3.9"
+
 executors:
-  python-executor:
-    docker:
-      - image: circleci/python:3.8
-    working_directory: ~/repo
+  python_executor:
+    machine:
+      image: ubuntu-2204:current  # Máquina Linux estándar
 
 jobs:
-  # Job 1: Crear y activar entorno virtual + instalar dependencias
-  install_dependencies:
-    executor: python-executor
+  setup:
+    executor: python_executor
     steps:
       - checkout
+      - run:
+          name: Verificar Python 3 disponible
+          command: python3 --version  # Asegúrate de que Python 3 esté instalado
       - run:
           name: Crear entorno virtual
           command: |
-            python3 -m venv venv
-            ls -l  # Verifica que la carpeta venv se haya creado
+            python3 -m venv venv || { echo "Error: No se pudo crear el entorno virtual"; exit 1; }
       - run:
-          name: Activar entorno virtual y verificar Python
+          name: Verificar entorno virtual creado
           command: |
-            if [ -f "venv/bin/activate" ]; then
-              source venv/bin/activate
-              which python || { echo "Error: No se pudo activar el entorno virtual"; exit 1; }
-            else
-              echo "Error: El entorno virtual no existe"; exit 1;
-            fi
+            if [ ! -d "venv" ]; then echo "Error: Entorno virtual no existe"; exit 1; fi
       - run:
-          name: Instalar dependencias
+          name: Activar entorno virtual e instalar dependencias
           command: |
-            source venv/bin/activate
-            pip install --upgrade pip
-            pip install -r requirements.txt
+            source venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt
+      - run:
+          name: Verificar versiones de Python y Django
+          command: |
+            source venv/bin/activate && python --version && python -m django --version
 
-  # Job 2: Revisar estilo de código con Flake8
-  lint:
-    executor: python-executor
+  migrate:
+    executor: python_executor
     steps:
       - checkout
       - run:
-          name: Activar entorno virtual y ejecutar Flake8
+          name: Verificar que Python apunte al entorno virtual
           command: |
-            source venv/bin/activate
-            pip install flake8
-            flake8 . || true  # Evita que el job falle aunque haya errores
-
-  # Job 3: Análisis estático del código con Bandit
-  code_quality:
-    executor: python-executor
-    steps:
-      - checkout
+            source venv/bin/activate && which python || { echo "Error: No se pudo activar el entorno virtual"; exit 1; }
       - run:
-          name: Activar entorno virtual y ejecutar Bandit
+          name: Aplicar migraciones
           command: |
-            source venv/bin/activate
-            pip install bandit
-            bandit -r .  # Analiza recursivamente la seguridad del código
+            source venv/bin/activate && python manage.py migrate || { echo "Error: Migraciones fallidas"; exit 1; }
 
-  # Job 4: Notificación a Slack
-  notify_slack:
-    executor: python-executor
+  notify_success:
+    executor: python_executor
     steps:
       - run:
-          name: Enviar notificación a Slack
+          name: Enviar notificación de éxito a Slack
           command: |
             curl -X POST -H 'Content-type: application/json' \
-            --data '{"text":"Pipeline terminado correctamente en CircleCI :white_check_mark:"}' \
-            $SLACK_WEBHOOK_URL
+            --data '{"text":"Pipeline completado exitosamente :white_check_mark:"}' $SLACK_WEBHOOK_URL
 
 workflows:
-  # Workflow Unificado: Validación y Notificación
-  validate_and_notify:
+  version: 2
+
+  setup_workflow:
     jobs:
-      - install_dependencies
-      - lint:
+      - setup
+
+  migration_workflow:
+    jobs:
+      - setup
+      - migrate:
           requires:
-            - install_dependencies
-      - code_quality:
+            - setup
+      - notify_success:
           requires:
-            - install_dependencies
-      - notify_slack:
-          requires:
-            - lint
-            - code_quality
+            - migrate
