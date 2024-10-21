@@ -84,12 +84,13 @@ workflows:
           requires:
             - install_dependencies
 
-  # Workflow 2: Despliegue y notificación
+  # Workflow 2: Despliegue y notificación (Incluye migrations_check)
   deploy_and_notify:
     jobs:
+      - migrations_check  # Aseguramos que este job esté presente en este workflow también
       - deploy_staging:
           requires:
-            - migrations_check  # Ahora se garantiza que 'migrations_check' se ejecute antes
+            - migrations_check  # Ahora este job es parte del mismo workflow
       - notify_slack:
           requires:
             - deploy_staging
