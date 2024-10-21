@@ -5,6 +5,11 @@ parameters:
     type: string
     default: "3.9"
 
+executors:
+  python_executor:
+    machine:  # Máquina Linux predeterminada de CircleCI
+      image: ubuntu-2004:202101-01
+
 jobs:
   setup:
     executor: python_executor
@@ -13,7 +18,7 @@ jobs:
       - run:
           name: Crear y activar entorno virtual
           command: |
-            python -m venv venv
+            python3 -m venv venv
             . venv/bin/activate
       - run:
           name: Instalar dependencias
@@ -26,7 +31,7 @@ jobs:
 
   lint:
     executor: python_executor
-    parallelism: 2  # Corre 2 instancias en paralelo para optimizar el análisis
+    parallelism: 2  # Ejecuta 2 instancias en paralelo para el análisis
     steps:
       - checkout
       - run:
@@ -77,11 +82,6 @@ jobs:
           command: |
             curl -X POST -H 'Content-type: application/json' \
             --data '{"text":"Pipeline fallido :x:"}' $SLACK_WEBHOOK_URL
-
-executors:
-  python_executor:
-    machine:
-      image: ubuntu-2004:202101-01  # Entorno base Linux con Python instalado
 
 workflows:
   version: 2
