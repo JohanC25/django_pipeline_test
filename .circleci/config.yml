@@ -7,80 +7,81 @@ parameters:
 
 jobs:
   setup:
-    machine:
-      image: windows-server-2019  # Usa Windows como sistema base
+    executor: python_executor
     steps:
-      - checkout
+      - checkout  # Descarga el código del repositorio
       - run:
           name: Crear y activar entorno virtual
           command: |
             python -m venv venv
-            .\venv\Scripts\activate
+            . venv/bin/activate
       - run:
           name: Instalar dependencias
           command: |
-            .\venv\Scripts\activate
-            pip install --upgrade pip
-            pip install -r requirements.txt
+            . venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt
       - run:
           name: Verificar versiones de Python y Django
           command: |
-            python --version
-            python -m django --version
+            . venv/bin/activate && python --version && python -m django --version
 
   lint:
-    machine:
-      image: windows-server-2019
-    parallelism: 2  # Ejecuta en paralelo
+    executor: python_executor
+    parallelism: 2  # Corre 2 instancias en paralelo para optimizar el análisis
     steps:
       - checkout
       - run:
-          name: Activar entorno virtual e instalar linters
+          name: Instalar Flake8
           command: |
-            .\venv\Scripts\activate
-            pip install flake8
+            . venv/bin/activate && pip install flake8
       - run:
-          name: Analizar código con Flake8
+          name: Ejecutar Flake8 en paralelo
           command: |
-            .\venv\Scripts\activate
-            flake8 . --count --max-line-length=88 --statistics
+            . venv/bin/activate && flake8 . --count --max-line-length=88 --statistics
 
   migrate:
-    machine:
-      image: windows-server-2019
+    executor: python_executor
     steps:
       - checkout
       - run:
-          name: Activar entorno virtual y aplicar migraciones
+          name: Aplicar migraciones
           command: |
-            .\venv\Scripts\activate
-            python manage.py migrate
+            . venv/bin/activate && python manage.py migrate
 
   check_dependencies:
-    machine:
-      image: windows-server-2019
+    executor: python_executor
     steps:
       - checkout
       - run:
-          name: Activar entorno virtual e instalar herramientas
+          name: Instalar Safety
           command: |
-            .\venv\Scripts\activate
-            pip install safety
+            . venv/bin/activate && pip install safety
       - run:
           name: Verificar vulnerabilidades en dependencias
           command: |
-            .\venv\Scripts\activate
-            safety check --full-report
+            . venv/bin/activate && safety check --full-report
 
-  notify:
-    machine:
-      image: windows-server-2019
+  notify_success:
+    executor: python_executor
     steps:
       - run:
-          name: Enviar notificación a Slack
+          name: Notificación de éxito en Slack
           command: |
             curl -X POST -H 'Content-type: application/json' \
-            --data '{"text":"Pipeline completado exitosamente en CircleCI :white_check_mark:"}' $SLACK_WEBHOOK_URL
+            --data '{"text":"Pipeline completado exitosamente :white_check_mark:"}' $SLACK_WEBHOOK_URL
+
+  notify_failure:
+    executor: python_executor
+    steps:
+      - run:
+          name: Notificación de fallo en Slack
+          command: |
+            curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"Pipeline fallido :x:"}' $SLACK_WEBHOOK_URL
+
+executors:
+  python_executor:
+    machine:
+      image: ubuntu-2004:202101-01  # Entorno base Linux con Python instalado
 
 workflows:
   version: 2
@@ -91,16 +92,25 @@ workflows:
       - lint:
           requires:
             - setup
+      - notify_success:
+          requires:
+            - lint
+          filters:
+            branches:
+              only: main
 
   analysis_workflow:
     jobs:
-      - setup  # Ejecutar setup nuevamente en este workflow
+      - setup
       - migrate:
           requires:
             - setup
       - check_dependencies:
           requires:
             - migrate
-      - notify:
+      - notify_success:
           requires:
             - check_dependencies
+          filters:
+            branches:
+              only: main
