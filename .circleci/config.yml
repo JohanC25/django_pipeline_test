@@ -3,49 +3,63 @@ version: 2.1
 executors:
   python-executor:
     docker:
-      - image: circleci/python:3.8
+      - image: circleci/python:3.8  # Usa una imagen con Python 3.8
     working_directory: ~/repo
 
 jobs:
-  # Job 1: Instalar dependencias
+  # Job 1: Crear y activar entorno virtual + instalar dependencias
   install_dependencies:
     executor: python-executor
     steps:
-      - checkout
+      - checkout  # Clona el código del repositorio
+      - run:
+          name: Crear entorno virtual
+          command: python -m venv venv  # Crea el entorno virtual
+      - run:
+          name: Activar entorno virtual y verificar Python
+          command: |
+            source venv/bin/activate  # Activa el entorno virtual
+            which python || { echo "Error: No se pudo activar el entorno virtual"; exit 1; }
       - run:
           name: Instalar dependencias
           command: |
-            python -m pip install --upgrade pip
+            source venv/bin/activate
+            pip install --upgrade pip
             pip install -r requirements.txt
 
-  # Job 2: Revisar estilo con Flake8
+  # Job 2: Revisar estilo de código con Flake8
   lint:
     executor: python-executor
     steps:
       - checkout
       - run:
-          name: Revisar estilo de código con Flake8
+          name: Activar entorno virtual y ejecutar Flake8
           command: |
+            source venv/bin/activate
             pip install flake8
             flake8 .
 
-  # Job 3: Verificar migraciones
+  # Job 3: Verificar migraciones de Django
   migrations_check:
     executor: python-executor
     steps:
       - checkout
       - run:
-          name: Verificar migraciones pendientes
-          command: python manage.py makemigrations --check --dry-run
+          name: Activar entorno virtual y verificar migraciones
+          command: |
+            source venv/bin/activate
+            python manage.py makemigrations --check --dry-run
 
-  # Job 4: Desplegar a ambiente de staging (simulado)
+  # Job 4: Desplegar aplicación (Simulación)
   deploy_staging:
     executor: python-executor
     steps:
       - checkout
       - run:
-          name: Desplegar a staging
-          command: echo "Desplegando aplicación a staging..."
+          name: Desplegar a Staging
+          command: |
+            source venv/bin/activate
+            echo "Desplegando aplicación a Staging..."
 
   # Job 5: Notificación a Slack
   notify_slack:
@@ -59,7 +73,7 @@ jobs:
             $SLACK_WEBHOOK_URL
 
 workflows:
-  # Workflow 1: Validaciones en paralelo
+  # Workflow 1: Validación de código en paralelo
   validate_code:
     jobs:
       - install_dependencies
