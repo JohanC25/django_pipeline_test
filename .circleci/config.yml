@@ -14,12 +14,18 @@ jobs:
       - checkout
       - run:
           name: Crear entorno virtual
-          command: python -m venv venv
+          command: |
+            python3 -m venv venv  # Crea el entorno virtual
+            ls -l  # Verifica que la carpeta venv se haya creado
       - run:
           name: Activar entorno virtual y verificar Python
           command: |
-            source venv/bin/activate
-            which python || { echo "Error: No se pudo activar el entorno virtual"; exit 1; }
+            if [ -f "venv/bin/activate" ]; then
+              source venv/bin/activate
+              which python || { echo "Error: No se pudo activar el entorno virtual"; exit 1; }
+            else
+              echo "Error: El entorno virtual no existe"; exit 1;
+            fi
       - run:
           name: Instalar dependencias
           command: |
@@ -39,29 +45,19 @@ jobs:
             pip install flake8
             flake8 .
 
-  # Job 3: Verificar migraciones de Django
-  migrations_check:
+  # Job 3: Análisis estático del código (Code Quality)
+  code_quality:
     executor: python-executor
     steps:
       - checkout
       - run:
-          name: Activar entorno virtual y verificar migraciones
+          name: Activar entorno virtual y ejecutar Bandit
           command: |
             source venv/bin/activate
-            python manage.py makemigrations --check --dry-run
+            pip install bandit
+            bandit -r .  # Analiza recursivamente la seguridad del código
 
-  # Job 4: Desplegar aplicación (Simulación)
-  deploy_staging:
-    executor: python-executor
-    steps:
-      - checkout
-      - run:
-          name: Desplegar a Staging
-          command: |
-            source venv/bin/activate
-            echo "Desplegando aplicación a Staging..."
-
-  # Job 5: Notificación a Slack
+  # Job 4: Notificación a Slack
   notify_slack:
     executor: python-executor
     steps:
@@ -80,17 +76,14 @@ workflows:
       - lint:
           requires:
             - install_dependencies
-      - migrations_check:
+      - code_quality:
           requires:
             - install_dependencies
 
-  # Workflow 2: Despliegue y notificación (Incluye migrations_check)
-  deploy_and_notify:
+  # Workflow 2: Notificación al finalizar
+  notify_completion:
     jobs:
-      - migrations_check  # Aseguramos que este job esté presente en este workflow también
-      - deploy_staging:
-          requires:
-            - migrations_check  # Ahora este job es parte del mismo workflow
       - notify_slack:
           requires:
-            - deploy_staging
+            - lint
+            - code_quality
