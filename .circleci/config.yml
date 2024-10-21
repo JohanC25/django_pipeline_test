@@ -1,75 +1,81 @@
 version: 2.1
 
-parameters:
-  python-version:
-    type: string
-    default: "3.9"
-
 executors:
-  python_executor:
-    machine:
-      image: ubuntu-2204:current  # Máquina Linux estándar
+  python-executor:
+    docker:
+      - image: circleci/python:3.8
+    working_directory: ~/repo
 
 jobs:
-  setup:
-    executor: python_executor
+  # Job 1: Instalar dependencias
+  install_dependencies:
+    executor: python-executor
     steps:
       - checkout
       - run:
-          name: Verificar Python 3 disponible
-          command: python3 --version  # Asegúrate de que Python 3 esté instalado
-      - run:
-          name: Crear entorno virtual
+          name: Instalar dependencias
           command: |
-            python3 -m venv venv || { echo "Error: No se pudo crear el entorno virtual"; exit 1; }
-      - run:
-          name: Verificar entorno virtual creado
-          command: |
-            if [ ! -d "venv" ]; then echo "Error: Entorno virtual no existe"; exit 1; fi
-      - run:
-          name: Activar entorno virtual e instalar dependencias
-          command: |
-            source venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt
-      - run:
-          name: Verificar versiones de Python y Django
-          command: |
-            source venv/bin/activate && python --version && python -m django --version
+            python -m pip install --upgrade pip
+            pip install -r requirements.txt
 
-  migrate:
-    executor: python_executor
+  # Job 2: Revisar estilo con Flake8
+  lint:
+    executor: python-executor
     steps:
       - checkout
       - run:
-          name: Verificar que Python apunte al entorno virtual
+          name: Revisar estilo de código con Flake8
           command: |
-            source venv/bin/activate && which python || { echo "Error: No se pudo activar el entorno virtual"; exit 1; }
-      - run:
-          name: Aplicar migraciones
-          command: |
-            source venv/bin/activate && python manage.py migrate || { echo "Error: Migraciones fallidas"; exit 1; }
+            pip install flake8
+            flake8 .
 
-  notify_success:
-    executor: python_executor
+  # Job 3: Verificar migraciones
+  migrations_check:
+    executor: python-executor
+    steps:
+      - checkout
+      - run:
+          name: Verificar migraciones pendientes
+          command: python manage.py makemigrations --check --dry-run
+
+  # Job 4: Desplegar a ambiente de staging (simulado)
+  deploy_staging:
+    executor: python-executor
+    steps:
+      - checkout
+      - run:
+          name: Desplegar a staging
+          command: echo "Desplegando aplicación a staging..."
+
+  # Job 5: Notificación a Slack
+  notify_slack:
+    executor: python-executor
     steps:
       - run:
-          name: Enviar notificación de éxito a Slack
+          name: Enviar notificación a Slack
           command: |
             curl -X POST -H 'Content-type: application/json' \
-            --data '{"text":"Pipeline completado exitosamente :white_check_mark:"}' $SLACK_WEBHOOK_URL
+            --data '{"text":"Pipeline terminado correctamente en CircleCI :white_check_mark:"}' \
+            $SLACK_WEBHOOK_URL
 
 workflows:
-  version: 2
-
-  setup_workflow:
+  # Workflow 1: Validaciones en paralelo
+  validate_code:
     jobs:
-      - setup
+      - install_dependencies
+      - lint:
+          requires:
+            - install_dependencies
+      - migrations_check:
+          requires:
+            - install_dependencies
 
-  migration_workflow:
+  # Workflow 2: Despliegue y notificación
+  deploy_and_notify:
     jobs:
-      - setup
-      - migrate:
+      - deploy_staging:
           requires:
-            - setup
-      - notify_success:
+            - migrations_check
+      - notify_slack:
           requires:
-            - migrate
+            - deploy_staging
