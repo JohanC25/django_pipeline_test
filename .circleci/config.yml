@@ -7,41 +7,45 @@ parameters:
 
 executors:
   python_executor:
-    machine:  # Usa el entorno de máquina Linux estándar de CircleCI
-      image: ubuntu-2204:current  # Imagen predeterminada compatible con Python
+    machine:
+      image: ubuntu-2204:current  # Máquina Linux compatible
 
 jobs:
   setup:
     executor: python_executor
     steps:
-      - checkout
+      - checkout  # Descargar el código del repositorio
       - run:
           name: Crear y activar entorno virtual
           command: |
             python3 -m venv venv
-            . venv/bin/activate
+            source venv/bin/activate
       - run:
           name: Instalar dependencias
           command: |
-            . venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt
+            source venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt
       - run:
           name: Verificar versiones de Python y Django
           command: |
-            . venv/bin/activate && python --version && python -m django --version
+            source venv/bin/activate && python --version && python -m django --version
 
   lint:
     executor: python_executor
-    parallelism: 2  # Ejecuta 2 instancias en paralelo
+    parallelism: 2  # Ejecuta dos instancias en paralelo para acelerar
     steps:
       - checkout
       - run:
+          name: Verificar entorno virtual
+          command: |
+            source venv/bin/activate && which python  # Confirmar que usa 'venv'
+      - run:
           name: Instalar Flake8
           command: |
-            . venv/bin/activate && pip install flake8
+            source venv/bin/activate && pip install flake8
       - run:
           name: Ejecutar Flake8 en paralelo
           command: |
-            . venv/bin/activate && flake8 . --count --max-line-length=88 --statistics
+            source venv/bin/activate && flake8 . --count --max-line-length=88 --statistics
 
   migrate:
     executor: python_executor
@@ -50,7 +54,7 @@ jobs:
       - run:
           name: Aplicar migraciones
           command: |
-            . venv/bin/activate && python manage.py migrate
+            source venv/bin/activate && python manage.py migrate
 
   check_dependencies:
     executor: python_executor
@@ -59,17 +63,17 @@ jobs:
       - run:
           name: Instalar Safety
           command: |
-            . venv/bin/activate && pip install safety
+            source venv/bin/activate && pip install safety
       - run:
           name: Verificar vulnerabilidades en dependencias
           command: |
-            . venv/bin/activate && safety check --full-report
+            source venv/bin/activate && safety check --full-report
 
   notify_success:
     executor: python_executor
     steps:
       - run:
-          name: Enviar notificación de éxito a Slack
+          name: Notificación de éxito en Slack
           command: |
             curl -X POST -H 'Content-type: application/json' \
             --data '{"text":"Pipeline completado exitosamente :white_check_mark:"}' $SLACK_WEBHOOK_URL
@@ -78,7 +82,7 @@ jobs:
     executor: python_executor
     steps:
       - run:
-          name: Enviar notificación de fallo a Slack
+          name: Notificación de fallo en Slack
           command: |
             curl -X POST -H 'Content-type: application/json' \
             --data '{"text":"Pipeline fallido :x:"}' $SLACK_WEBHOOK_URL
@@ -92,12 +96,12 @@ workflows:
       - lint:
           requires:
             - setup
-      - notify_success:
-          requires:
-            - lint
           filters:
             branches:
               only: main
+      - notify_success:
+          requires:
+            - lint
 
   analysis_workflow:
     jobs:
@@ -111,6 +115,3 @@ workflows:
       - notify_success:
           requires:
             - check_dependencies
-          filters:
-            branches:
-              only: main
