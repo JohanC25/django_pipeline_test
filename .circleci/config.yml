@@ -15,7 +15,7 @@ jobs:
       - run:
           name: Crear entorno virtual
           command: |
-            python3 -m venv venv  # Crea el entorno virtual
+            python3 -m venv venv
             ls -l  # Verifica que la carpeta venv se haya creado
       - run:
           name: Activar entorno virtual y verificar Python
@@ -45,7 +45,7 @@ jobs:
             pip install flake8
             flake8 .
 
-  # Job 3: Análisis estático del código (Code Quality)
+  # Job 3: Análisis estático del código con Bandit
   code_quality:
     executor: python-executor
     steps:
@@ -69,8 +69,8 @@ jobs:
             $SLACK_WEBHOOK_URL
 
 workflows:
-  # Workflow 1: Validación de código en paralelo
-  validate_code:
+  # Workflow Unificado: Validación y Notificación
+  validate_and_notify:
     jobs:
       - install_dependencies
       - lint:
@@ -79,10 +79,6 @@ workflows:
       - code_quality:
           requires:
             - install_dependencies
-
-  # Workflow 2: Notificación al finalizar
-  notify_completion:
-    jobs:
       - notify_slack:
           requires:
             - lint
