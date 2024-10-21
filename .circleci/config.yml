@@ -8,7 +8,7 @@ parameters:
 executors:
   python_executor:
     machine:
-      image: ubuntu-2204:current  # Máquina Linux compatible
+      image: ubuntu-2204:current  # Máquina Linux estándar
 
 jobs:
   setup:
@@ -16,16 +16,22 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Crear y activar entorno virtual
-          command: |
-            python3 -m venv venv
-            source venv/bin/activate
+          name: Verificar Python 3 disponible
+          command: python3 --version  # Asegúrate de que Python 3 esté instalado
       - run:
-          name: Instalar dependencias
+          name: Crear entorno virtual
+          command: |
+            python3 -m venv venv || { echo "Error: No se pudo crear el entorno virtual"; exit 1; }
+      - run:
+          name: Verificar entorno virtual creado
+          command: |
+            if [ ! -d "venv" ]; then echo "Error: Entorno virtual no existe"; exit 1; fi
+      - run:
+          name: Activar entorno virtual e instalar dependencias
           command: |
             source venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt
       - run:
-          name: Verificar Python y Django
+          name: Verificar versiones de Python y Django
           command: |
             source venv/bin/activate && python --version && python -m django --version
 
@@ -34,23 +40,19 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Depurar entorno virtual
+          name: Verificar que Python apunte al entorno virtual
           command: |
-            source venv/bin/activate && which python  # Verificar que apunta a 'venv'
-      - run:
-          name: Verificar dependencias instaladas
-          command: |
-            source venv/bin/activate && pip freeze  # Verificar si todo está instalado
+            source venv/bin/activate && which python || { echo "Error: No se pudo activar el entorno virtual"; exit 1; }
       - run:
           name: Aplicar migraciones
           command: |
-            source venv/bin/activate && python manage.py migrate
+            source venv/bin/activate && python manage.py migrate || { echo "Error: Migraciones fallidas"; exit 1; }
 
   notify_success:
     executor: python_executor
     steps:
       - run:
-          name: Notificación de éxito en Slack
+          name: Enviar notificación de éxito a Slack
           command: |
             curl -X POST -H 'Content-type: application/json' \
             --data '{"text":"Pipeline completado exitosamente :white_check_mark:"}' $SLACK_WEBHOOK_URL
