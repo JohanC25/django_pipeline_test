@@ -3,7 +3,7 @@ version: 2.1
 executors:
   python-executor:
     docker:
-      - image: circleci/python:3.8  # Usa una imagen con Python 3.8
+      - image: circleci/python:3.8
     working_directory: ~/repo
 
 jobs:
@@ -11,14 +11,14 @@ jobs:
   install_dependencies:
     executor: python-executor
     steps:
-      - checkout  # Clona el código del repositorio
+      - checkout
       - run:
           name: Crear entorno virtual
-          command: python -m venv venv  # Crea el entorno virtual
+          command: python -m venv venv
       - run:
           name: Activar entorno virtual y verificar Python
           command: |
-            source venv/bin/activate  # Activa el entorno virtual
+            source venv/bin/activate
             which python || { echo "Error: No se pudo activar el entorno virtual"; exit 1; }
       - run:
           name: Instalar dependencias
@@ -89,7 +89,7 @@ workflows:
     jobs:
       - deploy_staging:
           requires:
-            - migrations_check
+            - migrations_check  # Ahora se garantiza que 'migrations_check' se ejecute antes
       - notify_slack:
           requires:
             - deploy_staging
