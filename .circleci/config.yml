@@ -1,75 +1,90 @@
 version: 2.1
 
-parameters:
-  python-version:
-    type: string
-    default: "3.9"
-
 executors:
-  python_executor:
-    machine:
-      image: ubuntu-2204:current  # Máquina Linux estándar
+  python-executor:
+    docker:
+      - image: circleci/python:3.9  # Ajusta la versión de Python si es necesario
+    working_directory: ~/repo
 
 jobs:
-  setup:
-    executor: python_executor
+  checkout_code:
+    executor: python-executor
     steps:
-      - checkout
-      - run:
-          name: Verificar Python 3 disponible
-          command: python3 --version  # Asegúrate de que Python 3 esté instalado
-      - run:
-          name: Crear entorno virtual
-          command: |
-            python3 -m venv venv || { echo "Error: No se pudo crear el entorno virtual"; exit 1; }
-      - run:
-          name: Verificar entorno virtual creado
-          command: |
-            if [ ! -d "venv" ]; then echo "Error: Entorno virtual no existe"; exit 1; fi
-      - run:
-          name: Activar entorno virtual e instalar dependencias
-          command: |
-            source venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt
-      - run:
-          name: Verificar versiones de Python y Django
-          command: |
-            source venv/bin/activate && python --version && python -m django --version
+      - checkout  # Clona el código del repositorio
 
-  migrate:
-    executor: python_executor
+  install_dependencies:
+    executor: python-executor
     steps:
-      - checkout
+      - checkout  # Asegura que el código esté disponible
       - run:
-          name: Verificar que Python apunte al entorno virtual
+          name: Instalar dependencias
           command: |
-            source venv/bin/activate && which python || { echo "Error: No se pudo activar el entorno virtual"; exit 1; }
-      - run:
-          name: Aplicar migraciones
-          command: |
-            source venv/bin/activate && python manage.py migrate || { echo "Error: Migraciones fallidas"; exit 1; }
+            python -m pip install --upgrade pip
+            pip install -r requirements.txt
 
-  notify_success:
-    executor: python_executor
+  apply_migrations:
+    executor: python-executor
     steps:
+      - checkout  # Clona el repositorio
       - run:
-          name: Enviar notificación de éxito a Slack
+          name: Aplicar Migraciones
           command: |
-            curl -X POST -H 'Content-type: application/json' \
-            --data '{"text":"Pipeline completado exitosamente :white_check_mark:"}' $SLACK_WEBHOOK_URL
+            python manage.py migrate --noinput
+
+  parallel_tests:
+    executor: python-executor
+    parallelism: 4  # Dividimos las pruebas entre 4 contenedores en paralelo
+    steps:
+      - checkout  # Asegúrate de clonar el código en cada contenedor paralelo
+      - run:
+          name: Instalar dependencias (para pruebas)
+          command: |
+            pip install -r requirements.txt
+      - run:
+          name: Ejecutar pruebas en paralelo
+          command: |
+            python manage.py test --parallel 4
+
+  start_server:
+    executor: python-executor
+    steps:
+      - checkout  # Clona el repositorio
+      - run:
+          name: Verificar que el servidor se inicia correctamente
+          command: |
+            python manage.py runserver 0.0.0.0:8000 --noreload &
+            sleep 10  # Esperar a que arranque el servidor
+            curl --fail http://localhost:8000 || (echo "El servidor no pudo arrancar" && exit 1)
 
 workflows:
   version: 2
 
   setup_workflow:
     jobs:
-      - setup
+      - checkout_code
+      - install_dependencies
+      - apply_migrations
 
-  migration_workflow:
+  validation_workflow:
     jobs:
-      - setup
-      - migrate:
+      - parallel_tests:
           requires:
-            - setup
-      - notify_success:
+            - apply_migrations  # Corre después de las migraciones
+      - start_server:
           requires:
-            - migrate
+            - install_dependencies
+
+# Configuración de notificaciones de Slack
+notify:
+  slack:
+    branches:
+      only:
+        - main  # Notificaciones solo en la rama principal
+    template: |
+      Pipeline {{ .Pipeline.Number }} - {{ .Workflow.Name }}: {{ .Status }}
+    webhooks:
+      - url: "<TU_WEBHOOK_SLACK>"
+    on_success:
+      message: ":white_check_mark: Todo pasó exitosamente en {{ .Workflow.Name }}"
+    on_fail:
+      message: ":x: Hubo un fallo en {{ .Workflow.Name }}. Revisa el pipeline."
