@@ -1,12 +1,12 @@
 version: 2.1
 
 orbs:
-  slack: circleci/slack@4.9.2  # Orb para notificaciones de Slack
+  slack: circleci/slack@4.7.0  # Orb de Slack corregido
 
 executors:
   python-executor:
     docker:
-      - image: cimg/python:3.9  # Imagen base para el entorno
+      - image: cimg/python:3.9  # Imagen base
     resource_class: medium
     environment:
       DJANGO_SETTINGS_MODULE: my_project.settings
@@ -34,6 +34,7 @@ jobs:
             . venv/bin/activate
             flake8 my_project/
       - slack/notify:
+          channel: "#ci-notifications"
           event: fail
           template: basic_fail_1
 
@@ -47,12 +48,13 @@ jobs:
             . venv/bin/activate
             python manage.py makemigrations --check --dry-run
       - slack/notify:
+          channel: "#ci-notifications"
           event: fail
           template: basic_fail_1
 
   static-analysis:
     executor: python-executor
-    parallelism: 4  # Aquí aplicamos paralelismo
+    parallelism: 4  # Paralelismo
     steps:
       - checkout
       - run:
@@ -61,6 +63,7 @@ jobs:
             . venv/bin/activate
             bandit -r my_project/
       - slack/notify:
+          channel: "#ci-notifications"
           event: fail
           template: basic_fail_1
 
