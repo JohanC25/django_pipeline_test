@@ -3,7 +3,7 @@ version: 2.1
 executors:
   python-executor:
     docker:
-      - image: circleci/python:3.9  # Imagen base de Python
+      - image: cimg/python:3.12.5  # Imagen next-gen de Python recomendada por CircleCI
     working_directory: ~/repo
 
 jobs:
@@ -47,7 +47,7 @@ jobs:
           name: Simulación de despliegue
           command: |
             echo "Iniciando despliegue..."
-            # Aquí se puede integrar con un servicio de despliegue, si es necesario.
+            # Aquí se puede integrar con un servicio de despliegue real, si es necesario.
             echo "Despliegue finalizado."
 
 workflows:
