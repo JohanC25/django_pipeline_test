@@ -3,7 +3,7 @@ version: 2.1
 executors:
   python-executor:
     docker:
-      - image: cimg/python:3.12.5  # Imagen next-gen de Python recomendada por CircleCI
+      - image: cimg/python:3.12.5  # Imagen next-gen de Python 3.12.5
     working_directory: ~/repo
 
 jobs:
@@ -28,17 +28,17 @@ jobs:
             pip install flake8
             flake8 .
 
-  # Job 3: Static Files Collection
-  collect_static:
+  # Job 3: Clonar un Repositorio Público
+  clone_repo:
     executor: python-executor
     steps:
-      - checkout
       - run:
-          name: Ejecutar collectstatic
+          name: Clonar repositorio público
           command: |
-            python manage.py collectstatic --no-input
+            git clone https://github.com/python/cpython.git ~/repo/cpython
+            echo "Repositorio clonado correctamente."
 
-  # Job 4: Deployment Simulated
+  # Job 4: Simulación de Despliegue
   deploy:
     executor: python-executor
     steps:
@@ -47,7 +47,7 @@ jobs:
           name: Simulación de despliegue
           command: |
             echo "Iniciando despliegue..."
-            # Aquí se puede integrar con un servicio de despliegue real, si es necesario.
+            # Aquí se puede integrar con un servicio de despliegue real.
             echo "Despliegue finalizado."
 
 workflows:
@@ -59,10 +59,10 @@ workflows:
           requires:
             - install_dependencies
 
-  # Workflow 2: Collect Static and Deploy
-  static_and_deploy:
+  # Workflow 2: Clone and Deploy
+  clone_and_deploy:
     jobs:
-      - collect_static
+      - clone_repo
       - deploy:
           requires:
-            - collect_static
+            - clone_repo
