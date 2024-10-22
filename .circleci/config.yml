@@ -1,90 +1,76 @@
 version: 2.1
 
+orbs:
+  slack: circleci/slack@4.9.2  # Orb para notificaciones de Slack
+
 executors:
   python-executor:
     docker:
-      - image: circleci/python:3.9  # Ajusta la versión de Python según lo necesario
-    working_directory: ~/repo
+      - image: cimg/python:3.9  # Imagen base para el entorno
+    resource_class: medium
+    environment:
+      DJANGO_SETTINGS_MODULE: my_project.settings
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/mydb
 
 jobs:
-  checkout_code:
+  install-dependencies:
     executor: python-executor
     steps:
-      - checkout  # Clona el repositorio
-
-  install_dependencies:
-    executor: python-executor
-    steps:
-      - checkout  # Asegura que el código esté disponible
+      - checkout  # Clona el repo
       - run:
           name: Instalar dependencias
           command: |
-            python -m pip install --upgrade pip
+            python -m venv venv
+            . venv/bin/activate
             pip install -r requirements.txt
 
-  apply_migrations:
+  lint:
     executor: python-executor
     steps:
       - checkout
       - run:
-          name: Aplicar Migraciones
+          name: Lint con flake8
           command: |
-            python manage.py migrate --noinput
+            . venv/bin/activate
+            flake8 my_project/
+      - slack/notify:
+          event: fail
+          template: basic_fail_1
 
-  parallel_tests:
+  check-migrations:
     executor: python-executor
-    parallelism: 4  # Distribuye las pruebas entre 4 contenedores
     steps:
       - checkout
       - run:
-          name: Instalar dependencias
+          name: Comprobar migraciones pendientes
           command: |
-            pip install -r requirements.txt
-      - run:
-          name: Ejecutar pruebas en paralelo
-          command: |
-            python manage.py test --parallel 4
+            . venv/bin/activate
+            python manage.py makemigrations --check --dry-run
+      - slack/notify:
+          event: fail
+          template: basic_fail_1
 
-  start_server:
+  static-analysis:
     executor: python-executor
+    parallelism: 4  # Aquí aplicamos paralelismo
     steps:
       - checkout
       - run:
-          name: Verificar que el servidor se inicia correctamente
+          name: Análisis estático con Bandit
           command: |
-            python manage.py runserver 0.0.0.0:8000 --noreload &
-            sleep 10  # Esperar que el servidor arranque
-            curl --fail http://localhost:8000 || (echo "El servidor no pudo arrancar" && exit 1)
+            . venv/bin/activate
+            bandit -r my_project/
+      - slack/notify:
+          event: fail
+          template: basic_fail_1
 
 workflows:
-  version: 2
-
-  setup_workflow:
+  build:
     jobs:
-      - checkout_code
-      - install_dependencies
-      - apply_migrations
+      - install-dependencies
+      - check-migrations
 
-  validation_workflow:
+  lint-and-analysis:
     jobs:
-      - parallel_tests:
-          requires:
-            - apply_migrations  # Ahora este job está dentro del mismo workflow
-      - start_server:
-          requires:
-            - parallel_tests
-
-# Configuración de notificaciones de Slack
-notify:
-  slack:
-    branches:
-      only:
-        - main  # Notifica solo cambios en la rama principal
-    template: |
-      Pipeline {{ .Pipeline.Number }} - {{ .Workflow.Name }}: {{ .Status }}
-    webhooks:
-      - url: "<TU_WEBHOOK_SLACK>"
-    on_success:
-      message: ":white_check_mark: Todo pasó exitosamente en {{ .Workflow.Name }}"
-    on_fail:
-      message: ":x: Hubo un fallo en {{ .Workflow.Name }}. Revisa el pipeline."
+      - lint
+      - static-analysis
