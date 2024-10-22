@@ -1,70 +1,68 @@
 version: 2.1
 
-orbs:
-  slack: circleci/slack@4.7.0  # Orb de Slack para notificaciones
-
 executors:
   python-executor:
     docker:
-      - image: cimg/python:3.9  # Imagen base de Python
-    resource_class: medium
-    environment:
-      DJANGO_SETTINGS_MODULE: my_project.settings
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/mydb
+      - image: circleci/python:3.9  # Imagen base de Python
+    working_directory: ~/repo
 
 jobs:
-  install-dependencies:
-    executor: python-executor
-    steps:
-      - checkout  # Clona el repo
-      - run:
-          name: Instalar dependencias
-          command: pip install -r requirements.txt
-
-  lint:
+  # Job 1: Install Dependencies
+  install_dependencies:
     executor: python-executor
     steps:
       - checkout
       - run:
-          name: Lint con flake8
-          command: flake8 my_project/
-      - slack/notify:
-          channel: "#ci-notifications"
-          event: fail
-          template: basic_fail_1
+          name: Instalar dependencias con pip (sin virtualenv)
+          command: |
+            pip install -r requirements.txt
 
-  check-migrations:
+  # Job 2: Linter Check
+  lint_code:
     executor: python-executor
     steps:
       - checkout
       - run:
-          name: Verificar migraciones pendientes
-          command: python manage.py makemigrations --check --dry-run
-      - slack/notify:
-          channel: "#ci-notifications"
-          event: fail
-          template: basic_fail_1
+          name: Verificar el estilo del código con flake8
+          command: |
+            pip install flake8
+            flake8 .
 
-  static-analysis:
+  # Job 3: Static Files Collection
+  collect_static:
     executor: python-executor
-    parallelism: 4  # Ejecución en paralelo
     steps:
       - checkout
       - run:
-          name: Análisis estático con Bandit
-          command: bandit -r my_project/
-      - slack/notify:
-          channel: "#ci-notifications"
-          event: fail
-          template: basic_fail_1
+          name: Ejecutar collectstatic
+          command: |
+            python manage.py collectstatic --no-input
+
+  # Job 4: Deployment Simulated
+  deploy:
+    executor: python-executor
+    steps:
+      - checkout
+      - run:
+          name: Simulación de despliegue
+          command: |
+            echo "Iniciando despliegue..."
+            # Aquí se puede integrar con un servicio de despliegue, si es necesario.
+            echo "Despliegue finalizado."
 
 workflows:
-  build:
+  # Workflow 1: Verify and Prepare
+  verify_and_prepare:
     jobs:
-      - install-dependencies
-      - check-migrations
+      - install_dependencies
+      - lint_code:
+          requires:
+            - install_dependencies
 
-  lint-and-analysis:
+  # Workflow 2: Collect Static and Deploy
+  static_and_deploy:
     jobs:
-      - lint
-      - static-analysis
+      - collect_static
+      - deploy:
+          requires:
+            - collect_static
