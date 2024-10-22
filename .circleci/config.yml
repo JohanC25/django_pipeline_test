@@ -1,12 +1,12 @@
 version: 2.1
 
 orbs:
-  slack: circleci/slack@4.7.0  # Orb de Slack corregido
+  slack: circleci/slack@4.7.0  # Orb de Slack para notificaciones
 
 executors:
   python-executor:
     docker:
-      - image: cimg/python:3.9  # Imagen base
+      - image: cimg/python:3.9  # Imagen base de Python
     resource_class: medium
     environment:
       DJANGO_SETTINGS_MODULE: my_project.settings
@@ -19,10 +19,7 @@ jobs:
       - checkout  # Clona el repo
       - run:
           name: Instalar dependencias
-          command: |
-            python -m venv venv
-            . venv/bin/activate
-            pip install -r requirements.txt
+          command: pip install -r requirements.txt
 
   lint:
     executor: python-executor
@@ -30,9 +27,7 @@ jobs:
       - checkout
       - run:
           name: Lint con flake8
-          command: |
-            . venv/bin/activate
-            flake8 my_project/
+          command: flake8 my_project/
       - slack/notify:
           channel: "#ci-notifications"
           event: fail
@@ -43,10 +38,8 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Comprobar migraciones pendientes
-          command: |
-            . venv/bin/activate
-            python manage.py makemigrations --check --dry-run
+          name: Verificar migraciones pendientes
+          command: python manage.py makemigrations --check --dry-run
       - slack/notify:
           channel: "#ci-notifications"
           event: fail
@@ -54,14 +47,12 @@ jobs:
 
   static-analysis:
     executor: python-executor
-    parallelism: 4  # Paralelismo
+    parallelism: 4  # Ejecución en paralelo
     steps:
       - checkout
       - run:
           name: Análisis estático con Bandit
-          command: |
-            . venv/bin/activate
-            bandit -r my_project/
+          command: bandit -r my_project/
       - slack/notify:
           channel: "#ci-notifications"
           event: fail
