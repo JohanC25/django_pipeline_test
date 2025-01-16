@@ -7,3 +7,4 @@ Pillow
 pylint
 flake8
 pytest
+python-dotenv
