@@ -11,8 +11,9 @@ pipeline {
                     echo "Ejecutando análisis estático..."
                 }
                 bat 'pip install flake8 pylint'
-                bat 'flake8 proyecto/ || true'  // Permite que el pipeline continúe
-                bat 'pylint proyecto/ || true' // Permite que el pipeline continúe
+                // Usa exit 0 para que el pipeline no falle aunque flake8 detecte errores
+                bat 'flake8 proyecto/ || exit /b 0'
+                bat 'pylint proyecto/ || exit /b 0'
             }
         }
         stage('Build') {
