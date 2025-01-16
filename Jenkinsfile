@@ -1,55 +1,56 @@
 pipeline {
     agent any
-
+    environment {
+        DOCKER_IMAGE = "djangocorepipeline:${env.BUILD_ID}"
+        DOCKER_REGISTRY = "localhost:5000"
+    }
     stages {
-        stage('Instalar dependencias') {
+        stage('Pre-Build: Análisis estático') {
             steps {
                 script {
-                    // Instalación de las dependencias desde requirements.txt en Windows
-                    bat 'pip install -r requirements.txt'
+                    echo "Ejecutando análisis estático..."
                 }
+                // Validación con flake8
+                sh 'pip install flake8 pylint'
+                sh 'flake8 proyecto/'
+                // Validación con pylint
+                sh 'pylint proyecto/'
             }
         }
-
-        stage('Verificar Sintaxis (Linting)') {
+        stage('Build') {
             steps {
                 script {
-                    // Ejecutar flake8 para verificar la sintaxis del código en Windows
-                    bat 'pip install flake8'  // Aseguramos que flake8 está instalado
-                    bat 'flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics'
+                    echo "Compilando y creando la imagen Docker..."
                 }
+                sh 'docker build -t $DOCKER_IMAGE .'
             }
         }
-
-        stage('Migrar Base de Datos') {
+        stage('Test') {
             steps {
                 script {
-                    // Ejecutar las migraciones de la base de datos en Windows
-                    bat 'python manage.py migrate'
+                    echo "Ejecutando pruebas..."
                 }
+                // Instalar dependencias necesarias para pruebas
+                sh 'pip install pytest'
+                // Pruebas unitarias
+                sh 'pytest proyecto/tests/'
             }
         }
-
-        stage('Generar Artefactos') {
+        stage('Deploy') {
             steps {
                 script {
-                    // Crear un archivo ZIP del proyecto
-                    bat 'tar -a -c -f proyecto.zip .'
+                    echo "Desplegando aplicación en Docker..."
                 }
+                sh 'docker run -d -p 8000:8000 $DOCKER_IMAGE'
             }
         }
     }
-
     post {
         always {
-            // Limpiar el workspace después de ejecutar el pipeline
-            cleanWs()
-        }
-        success {
-            echo 'Pipeline ejecutado correctamente.'
-        }
-        failure {
-            echo 'El pipeline ha fallado. Revisa los errores.'
+            script {
+                echo "Limpieza del entorno..."
+            }
+            sh 'docker system prune -f'
         }
     }
 }
