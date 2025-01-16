@@ -1,56 +1,101 @@
 pipeline {
     agent any
-    environment {
-        DOCKER_IMAGE = "djangocorepipeline:${env.BUILD_ID}"
-        DOCKER_REGISTRY = "localhost:5000"
-    }
+
     stages {
+        stage('Declarative: Checkout SCM') {
+            steps {
+                checkout scm
+            }
+        }
+
         stage('Pre-Build: Análisis estático') {
             steps {
+                echo 'Ejecutando análisis estático...'
+
+                // Ajuste para compatibilidad con Windows
                 script {
-                    echo "Ejecutando análisis estático..."
+                    if (isUnix()) {
+                        sh 'nohup ./static_analysis_tool.sh &'
+                    } else {
+                        bat 'start /b static_analysis_tool.bat'
+                    }
                 }
-                // Validación con flake8
-                sh 'pip install flake8 pylint'
-                sh 'flake8 proyecto/'
-                // Validación con pylint
-                sh 'pylint proyecto/'
+            }
+            post {
+                failure {
+                    echo 'Error en la etapa de análisis estático.'
+                }
             }
         }
+
         stage('Build') {
+            when {
+                expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
+            }
             steps {
+                echo 'Construyendo el proyecto...'
+                // Aquí puedes añadir tus pasos de construcción
                 script {
-                    echo "Compilando y creando la imagen Docker..."
+                    if (isUnix()) {
+                        sh './build.sh'
+                    } else {
+                        bat 'build.bat'
+                    }
                 }
-                sh 'docker build -t $DOCKER_IMAGE .'
             }
         }
+
         stage('Test') {
+            when {
+                expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
+            }
             steps {
+                echo 'Ejecutando pruebas...'
+                // Aquí puedes añadir tus pasos de prueba
                 script {
-                    echo "Ejecutando pruebas..."
+                    if (isUnix()) {
+                        sh './run_tests.sh'
+                    } else {
+                        bat 'run_tests.bat'
+                    }
                 }
-                // Instalar dependencias necesarias para pruebas
-                sh 'pip install pytest'
-                // Pruebas unitarias
-                sh 'pytest proyecto/tests/'
             }
         }
+
         stage('Deploy') {
+            when {
+                expression { currentBuild.result == null || currentBuild.result == 'SUCCESS' }
+            }
             steps {
+                echo 'Desplegando la aplicación...'
+                // Aquí puedes añadir tus pasos de despliegue
                 script {
-                    echo "Desplegando aplicación en Docker..."
+                    if (isUnix()) {
+                        sh './deploy.sh'
+                    } else {
+                        bat 'deploy.bat'
+                    }
                 }
-                sh 'docker run -d -p 8000:8000 $DOCKER_IMAGE'
             }
         }
     }
+
     post {
         always {
+            echo 'Limpieza del entorno...'
             script {
-                echo "Limpieza del entorno..."
+                if (isUnix()) {
+                    sh 'rm -rf workspace_temp_files'
+                } else {
+                    bat 'del /Q workspace_temp_files'
+                }
             }
-            sh 'docker system prune -f'
+        }
+        success {
+            echo 'Pipeline ejecutado con éxito.'
+        }
+        failure {
+            echo 'Pipeline falló. Revisa los logs para más detalles.'
         }
     }
 }
