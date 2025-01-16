@@ -10,9 +10,7 @@ pipeline {
                 script {
                     echo "Ejecutando análisis estático..."
                 }
-                // Instalar herramientas de análisis
                 bat 'pip install flake8 pylint'
-                // Ejecutar análisis estático
                 bat 'flake8 proyecto/ || exit /b 0'
                 bat 'pylint proyecto/ || exit /b 0'
             }
@@ -22,7 +20,6 @@ pipeline {
                 script {
                     echo "Compilando y creando la imagen Docker..."
                 }
-                // Construcción de la imagen Docker
                 bat 'docker build -t %DOCKER_IMAGE% .'
             }
         }
@@ -31,9 +28,7 @@ pipeline {
                 script {
                     echo "Ejecutando pruebas..."
                 }
-                // Instalar dependencias necesarias para pruebas
                 bat 'pip install pytest'
-                // Pruebas unitarias
                 bat 'pytest proyecto/tests/'
             }
         }
@@ -42,9 +37,8 @@ pipeline {
                 script {
                     echo "Limpiando contenedores en conflicto..."
                 }
-                // Elimina contenedores que usen el puerto 8000
                 bat '''
-                for /f "tokens=*" %i in ('docker ps -q --filter "publish=8000"') do docker rm -f %i
+                FOR /F "tokens=*" %%i IN ('docker ps -q --filter "publish=8000"') DO docker rm -f %%i
                 '''
             }
         }
@@ -53,7 +47,6 @@ pipeline {
                 script {
                     echo "Desplegando aplicación en Docker..."
                 }
-                // Ejecutar el contenedor con el puerto correcto
                 bat 'docker run -d -p 8000:8000 %DOCKER_IMAGE%'
             }
         }
@@ -63,7 +56,6 @@ pipeline {
             script {
                 echo "Limpieza del entorno..."
             }
-            // Limpiar recursos de Docker
             bat 'docker system prune -af'
         }
     }
