@@ -10,8 +10,9 @@ pipeline {
                 script {
                     echo "Ejecutando análisis estático..."
                 }
+                // Instalar herramientas de análisis
                 bat 'pip install flake8 pylint'
-                // Usa exit 0 para que el pipeline no falle aunque flake8 detecte errores
+                // Ejecutar análisis estático
                 bat 'flake8 proyecto/ || exit /b 0'
                 bat 'pylint proyecto/ || exit /b 0'
             }
@@ -36,12 +37,23 @@ pipeline {
                 bat 'pytest proyecto/tests/'
             }
         }
+        stage('Clean Docker Environment') {
+            steps {
+                script {
+                    echo "Limpiando contenedores en conflicto..."
+                }
+                // Elimina contenedores que usen el puerto 8000
+                bat '''
+                for /f "tokens=*" %i in ('docker ps -q --filter "publish=8000"') do docker rm -f %i
+                '''
+            }
+        }
         stage('Deploy') {
             steps {
                 script {
                     echo "Desplegando aplicación en Docker..."
                 }
-                // Ejecutar el contenedor
+                // Ejecutar el contenedor con el puerto correcto
                 bat 'docker run -d -p 8000:8000 %DOCKER_IMAGE%'
             }
         }
