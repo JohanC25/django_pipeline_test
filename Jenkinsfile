@@ -10,9 +10,10 @@ pipeline {
                 script {
                     echo "Ejecutando análisis estático..."
                 }
-                bat 'pip install flake8 pylint'
-                bat 'flake8 proyecto/ || exit /b 0'
-                bat 'pylint proyecto/ || exit /b 0'
+                bat 'pip install flake8'
+                bat 'pip install pylint'
+                bat 'flake8 proyecto/ || echo "flake8 terminó con advertencias"'
+                bat 'pylint proyecto/ || echo "pylint terminó con advertencias"'
             }
         }
         stage('Build') {
@@ -20,7 +21,7 @@ pipeline {
                 script {
                     echo "Compilando y creando la imagen Docker..."
                 }
-                bat 'docker build -t %DOCKER_IMAGE% .'
+                bat 'docker build -t %DOCKER_REGISTRY%/%DOCKER_IMAGE% . || exit 1'
             }
         }
         stage('Test') {
@@ -29,7 +30,7 @@ pipeline {
                     echo "Ejecutando pruebas..."
                 }
                 bat 'pip install pytest'
-                bat 'pytest proyecto/tests/'
+                bat 'pytest proyecto/tests/ || exit 1'
             }
         }
         stage('Clean Docker Environment') {
@@ -38,7 +39,7 @@ pipeline {
                     echo "Limpiando contenedores en conflicto..."
                 }
                 bat '''
-                FOR /F "tokens=*" %%i IN ('docker ps -q --filter "publish=8000"') DO docker rm -f %%i
+                FOR /F "tokens=*" %%i IN ('docker ps -q --filter "publish=8000"') DO docker rm -f %%i || echo "No containers to remove"
                 '''
             }
         }
@@ -47,7 +48,7 @@ pipeline {
                 script {
                     echo "Desplegando aplicación en Docker..."
                 }
-                bat 'docker run -d -p 8000:8000 %DOCKER_IMAGE%'
+                bat 'docker run -d -p 8000:8000 %DOCKER_REGISTRY%/%DOCKER_IMAGE%'
             }
         }
     }
