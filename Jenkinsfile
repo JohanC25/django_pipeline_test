@@ -24,13 +24,23 @@ pipeline {
                 bat 'docker build -t %DOCKER_IMAGE% . || exit 1'
             }
         }
-        stage('Security Scan') {
+        stage('Security Scan: Django') {
             steps {
                 script {
-                    echo "Ejecutando análisis de seguridad con Trivy..."
+                    echo "Ejecutando análisis de seguridad con Trivy para Django..."
                 }
                 bat '''
                 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image %DOCKER_IMAGE% --severity CRITICAL || exit 1
+                '''
+            }
+        }
+        stage('Security Scan: Nginx') {
+            steps {
+                script {
+                    echo "Ejecutando análisis de seguridad con Trivy para Nginx..."
+                }
+                bat '''
+                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image %NGINX_IMAGE% --severity CRITICAL || exit 1
                 '''
             }
         }
@@ -55,20 +65,12 @@ pipeline {
                 }
             }
         }
-        stage('Deploy') {
+        stage('Deploy: Django') {
             steps {
                 script {
                     echo "Desplegando aplicación Django en Docker..."
                 }
                 bat 'docker run -d -p 8000:8000 --name django-container %DOCKER_IMAGE%'
-            }
-        }
-        stage('Run Nginx') {
-            steps {
-                script {
-                    echo "Iniciando contenedor de Nginx..."
-                }
-                bat 'docker run -d -p 8080:80 --name nginx-container %NGINX_IMAGE%'
             }
         }
     }
