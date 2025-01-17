@@ -3,6 +3,7 @@ pipeline {
     environment {
         DOCKER_IMAGE = "localhost:5000/djangocorepipeline:${env.BUILD_ID}"
         DOCKER_REGISTRY = "localhost:5000"
+        NGINX_IMAGE = "nginx:latest"
     }
     stages {
         stage('Pre-Build: Análisis estático') {
@@ -57,9 +58,17 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    echo "Desplegando aplicación en Docker..."
+                    echo "Desplegando aplicación Django en Docker..."
                 }
-                bat 'docker run -d -p 8000:8000 %DOCKER_IMAGE%'
+                bat 'docker run -d -p 8000:8000 --name django-container %DOCKER_IMAGE%'
+            }
+        }
+        stage('Run Nginx') {
+            steps {
+                script {
+                    echo "Iniciando contenedor de Nginx..."
+                }
+                bat 'docker run -d -p 8080:80 --name nginx-container %NGINX_IMAGE%'
             }
         }
     }
