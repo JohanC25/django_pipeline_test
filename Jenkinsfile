@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        DOCKER_IMAGE = "djangocorepipeline:${env.BUILD_ID}"
+        DOCKER_IMAGE = "localhost:5000/djangocorepipeline:${env.BUILD_ID}"
         DOCKER_REGISTRY = "localhost:5000"
     }
     stages {
@@ -10,8 +10,7 @@ pipeline {
                 script {
                     echo "Ejecutando análisis estático..."
                 }
-                bat 'pip install flake8'
-                bat 'pip install pylint'
+                bat 'pip install flake8 pylint'
                 bat 'flake8 proyecto/ || echo "flake8 terminó con advertencias"'
                 bat 'pylint proyecto/ || echo "pylint terminó con advertencias"'
             }
@@ -21,7 +20,7 @@ pipeline {
                 script {
                     echo "Compilando y creando la imagen Docker..."
                 }
-                bat 'docker build -t %DOCKER_REGISTRY%/%DOCKER_IMAGE% . || exit 1'
+                bat 'docker build -t %DOCKER_IMAGE% . || exit 1'
             }
         }
         stage('Test') {
@@ -38,9 +37,11 @@ pipeline {
                 script {
                     echo "Limpiando contenedores en conflicto..."
                 }
-                bat '''
-                FOR /F "tokens=*" %%i IN ('docker ps -q --filter "publish=8000"') DO docker rm -f %%i || echo "No containers to remove"
-                '''
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    bat '''
+                    FOR /F "tokens=*" %%i IN ('docker ps -q --filter "publish=8000"') DO docker rm -f %%i || exit /b 0
+                    '''
+                }
             }
         }
         stage('Deploy') {
@@ -48,7 +49,7 @@ pipeline {
                 script {
                     echo "Desplegando aplicación en Docker..."
                 }
-                bat 'docker run -d -p 8000:8000 %DOCKER_REGISTRY%/%DOCKER_IMAGE%'
+                bat 'docker run -d -p 8000:8000 %DOCKER_IMAGE%'
             }
         }
     }
