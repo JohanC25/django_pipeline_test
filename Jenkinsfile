@@ -23,6 +23,16 @@ pipeline {
                 bat 'docker build -t %DOCKER_IMAGE% . || exit 1'
             }
         }
+        stage('Security Scan') {
+            steps {
+                script {
+                    echo "Ejecutando análisis de seguridad con Trivy..."
+                }
+                bat '''
+                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image %DOCKER_IMAGE% --severity CRITICAL || exit 1
+                '''
+            }
+        }
         stage('Test') {
             steps {
                 script {
