@@ -24,7 +24,7 @@ pipeline {
                     echo "Ejecutando análisis SAST con SonarQube..."
                 }
                 // Ejecutar análisis con Sonar Scanner
-                withSonarQubeEnv('SonarQube') { // Asegúrate de que este nombre coincida con tu configuración en Jenkins
+                withSonarQubeEnv('SonarQube_Django_Taller') { // Asegúrate de que este nombre coincida con tu configuración en Jenkins
                     bat '''
                     sonar-scanner ^
                     -Dsonar.projectKey=djangocorepipeline ^
