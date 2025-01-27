@@ -63,7 +63,7 @@ pipeline {
                 '''
             }
         }
-        stage('Security Analysis') {
+        /*stage('Security Analysis') {
             steps {
                 script {
                     echo "Ejecutando análisis de seguridad con Safety..."
@@ -72,15 +72,15 @@ pipeline {
                     bat 'safety scan --full-report || echo "Safety terminó con vulnerabilidades."'
                 }
             }
-        }
-        /*stage('Validate Deployment Policies') {
+        }*/
+        stage('Validate Deployment Policies') {
             steps {
                 script {
                     echo "Validando políticas de despliegue..."
                 }
                 bat 'conftest test deployment.yml'
             }
-        }*/
+        }
         stage('Test') {
             steps {
                 script {
