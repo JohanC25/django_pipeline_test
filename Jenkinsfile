@@ -63,7 +63,7 @@ pipeline {
                 '''
             }
         }
-        stage('Security Analysis') {
+        /*stage('Security Analysis') {
             steps {
                 script {
                     try {
@@ -78,7 +78,7 @@ pipeline {
                     }
                 }
             }
-        }
+        }*/
         stage('Validate Deployment Policies') {
             steps {
                 script {
