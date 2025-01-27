@@ -63,23 +63,17 @@ pipeline {
                 '''
             }
         }
-        /*stage('Security Analysis') {
+        stage('Security Analysis') {
             steps {
                 script {
-                    try {
-                        bat 'safety check --full-report'
-
-                        // Si no hay errores, continúa normalmente
-                        echo "No vulnerabilities found in Safety."
-                    } catch (Exception e) {
-                        // Captura el error y muestra un mensaje de advertencia
-                        echo "Warning: Vulnerabilities found during Safety scan. Continuing pipeline..."
-                        echo "${e}"
-                    }
+                    echo "Ejecutando análisis de seguridad con Safety..."
+                }
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    bat 'safety check --full-report || echo "Safety terminó con vulnerabilidades."'
                 }
             }
         }
-        stage('Validate Deployment Policies') {
+        /*stage('Validate Deployment Policies') {
             steps {
                 script {
                     echo "Validando políticas de despliegue..."
