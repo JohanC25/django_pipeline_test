@@ -68,8 +68,8 @@ pipeline {
                 script {
                     echo "Ejecutando análisis de seguridad con Safety..."
                 }
-                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                    bat 'safety check --full-report || echo "Safety terminó con vulnerabilidades."'
+                catchError {
+                    bat 'safety scan --full-report || echo "Safety terminó con vulnerabilidades."'
                 }
             }
         }
