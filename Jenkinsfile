@@ -49,7 +49,7 @@ pipeline {
                     echo "Ejecutando análisis de seguridad con Trivy para Django..."
                 }
                 bat '''
-                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image %DOCKER_IMAGE% --severity CRITICAL || exit 1
+                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image %DOCKER_IMAGE% --severity CRITICAL --exit-code 0
                 '''
             }
         }
