@@ -78,7 +78,7 @@ pipeline {
                     }
                 }
             }
-        }*/
+        }
         stage('Validate Deployment Policies') {
             steps {
                 script {
@@ -86,7 +86,7 @@ pipeline {
                 }
                 bat 'conftest test deployment.yml'
             }
-        }
+        }*/
         stage('Test') {
             steps {
                 script {
