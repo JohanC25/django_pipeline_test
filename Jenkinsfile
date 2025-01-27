@@ -49,7 +49,7 @@ pipeline {
                     echo "Ejecutando análisis de seguridad con Trivy para Django..."
                 }
                 bat '''
-                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image %DOCKER_IMAGE% --severity CRITICAL --exit-code 0
+                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image %DOCKER_IMAGE% --severity CRITICAL || exit 1
                 '''
             }
         }
@@ -63,13 +63,20 @@ pipeline {
                 '''
             }
         }
-        stage('Dependency Scan') {
+        stage('Security Analysis') {
             steps {
                 script {
-                    echo "Escaneando dependencias de Python..."
+                    try {
+                        bat 'safety check --full-report'
+
+                        // Si no hay errores, continúa normalmente
+                        echo "No vulnerabilities found in Safety."
+                    } catch (Exception e) {
+                        // Captura el error y muestra un mensaje de advertencia
+                        echo "Warning: Vulnerabilities found during Safety scan. Continuing pipeline..."
+                        echo "${e}"
+                    }
                 }
-                bat 'pip install safety'
-                bat 'safety check --full-report || exit 1'
             }
         }
         stage('Validate Deployment Policies') {

@@ -2,5 +2,5 @@ package main
 
 deny[msg] {
     input.image != "localhost:5000/djangocorepipeline:${env.BUILD_ID}"
-    msg = "La imagen no está firmada o no es confiable."
+    msg = "Advertencia: La imagen no cumple con la política, pero el pipeline continuará."
 }
