@@ -63,6 +63,23 @@ pipeline {
                 '''
             }
         }
+        stage('Dependency Scan') {
+            steps {
+                script {
+                    echo "Escaneando dependencias de Python..."
+                }
+                bat 'pip install safety'
+                bat 'safety check --full-report || exit 1'
+            }
+        }
+        stage('Validate Deployment Policies') {
+            steps {
+                script {
+                    echo "Validando políticas de despliegue..."
+                }
+                bat 'conftest test deployment.yml'
+            }
+        }
         stage('Test') {
             steps {
                 script {
@@ -84,12 +101,28 @@ pipeline {
                 }
             }
         }
-        stage('Deploy: Django') {
+        stage('Deploy: Testing Environment') {
             steps {
                 script {
-                    echo "Desplegando aplicación Django en Docker..."
+                    echo "Desplegando en entorno de pruebas..."
                 }
-                bat 'docker run -d -p 8000:8000 --name django-container %DOCKER_IMAGE%'
+                bat 'docker run -d -p 8001:8000 --name django-test --env TESTING=True %DOCKER_IMAGE%'
+            }
+        }
+        stage('Deploy: Production Simulated') {
+            steps {
+                script {
+                    echo "Desplegando aplicación en entorno de producción simulado..."
+                }
+                bat 'docker run -d -p 8000:8000 --name django-prod %DOCKER_IMAGE%'
+            }
+        }
+        stage('Post-Deployment Security Monitoring') {
+            steps {
+                script {
+                    echo "Configurando monitoreo de seguridad post-despliegue con Falco..."
+                }
+                bat 'docker run -d --name falco --privileged -v /var/run/docker.sock:/host/var/run/docker.sock falcosecurity/falco:latest'
             }
         }
     }
