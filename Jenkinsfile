@@ -15,4 +15,20 @@ pipeline {
             }
         }
     }
+    stage('Deploy: Production Simulated') {
+        steps {
+            script {
+                echo "Desplegando aplicación en entorno de producción simulado..."
+            }
+            bat 'docker run -d -p 8000:8000 --name django-prod %DOCKER_IMAGE%'
+        }
+    }
+    stage('Post-Deployment Security Monitoring') {
+        steps {
+            script {
+                echo "Configurando monitoreo de seguridad post-despliegue con Falco..."
+            }
+            bat 'docker run -d --name falco --privileged -v /var/run/docker.sock:/host/var/run/docker.sock falcosecurity/falco:latest'
+        }
+    }
 }
