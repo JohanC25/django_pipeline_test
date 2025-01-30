@@ -14,12 +14,27 @@ pipeline {
             }
         }
 
+        stage('Deploy: Testing Simulated') {
+            steps {
+                script {
+                    echo "Desplegando aplicación en entorno de pruebas simulado..."
+                }
+                bat '''
+                docker ps -a -q --filter "name=django-test" | findstr . && docker rm -f django-test || echo "No hay contenedores previos con el nombre django-test"
+                docker run -d -p 8080:8000 --name django-test %DOCKER_IMAGE%
+                '''
+            }
+        }
+
         stage('Deploy: Production Simulated') {
             steps {
                 script {
                     echo "Desplegando aplicación en entorno de producción simulado..."
                 }
-                bat 'docker run -d -p 8000:8000 --name django-prod %DOCKER_IMAGE%'
+                bat '''
+                docker ps -a -q --filter "name=django-prod" | findstr . && docker rm -f django-prod || echo "No hay contenedores previos con el nombre django-prod"
+                docker run -d -p 8000:8000 --name django-prod %DOCKER_IMAGE%
+                '''
             }
         }
 
