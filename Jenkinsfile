@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        DOCKER_IMAGE = "localhost:5000/djangocorepipeline:${env.BUILD_ID}"
+        DOCKER_IMAGE = "localhost:5000/djangocorepipeline:latest"
         DOCKER_REGISTRY = "localhost:5000"
     }
     stages {
@@ -11,7 +11,7 @@ pipeline {
                     echo "Compilando y creando la imagen Docker..."
                 }
                 bat 'docker build -t %DOCKER_IMAGE% . || exit 1'
-                bat 'docker push %DOCKER_IMAGE% || exit 1' // Agregado para subir la imagen al registro
+                bat 'docker push %DOCKER_IMAGE% || exit 1'
             }
         }
     }
