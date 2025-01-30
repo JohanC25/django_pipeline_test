@@ -1,8 +1,7 @@
-// Pipeline para la rama "master"
 pipeline {
     agent any
     environment {
-        DOCKER_IMAGE = "localhost:5000/djangocorepipeline:${env.BUILD_ID}"
+        DOCKER_IMAGE = "localhost:5000/djangocorepipeline:latest"
         DOCKER_REGISTRY = "localhost:5000"
         NGINX_IMAGE = "nginx:latest"
         SONAR_HOST_URL = "http://localhost:9000/"
@@ -29,7 +28,7 @@ pipeline {
                     sonar-scanner ^
                     -Dsonar.projectKey=djangocorepipeline ^
                     -Dsonar.sources=proyecto ^
-                    -Dsonar.host.url=%SONAR_HOST_URL% ^
+                    -Dsonar.host.url=%SONAR_HOST_URL% ^            
                     -Dsonar.login=%SONAR_TOKEN%
                     '''
                 }
