@@ -21,7 +21,7 @@ pipeline {
                 }
                 bat '''
                 docker ps -a -q --filter "name=django-test" | findstr . && docker rm -f django-test || echo "No hay contenedores previos con el nombre django-test"
-                docker run -d -p 8080:8000 --name django-test %DOCKER_IMAGE%
+                docker run -d -p 8081:8000 --name django-test %DOCKER_IMAGE%
                 '''
             }
         }
