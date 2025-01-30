@@ -38,7 +38,9 @@ pipeline {
     }
     post {
         success {
-            build job: 'Pipeline-Build'
+            build job: 'Pipeline-Build', parameters: [
+                string(name: 'DOCKER_IMAGE', value: "${env.DOCKER_IMAGE}")
+            ]
         }
     }
 }
