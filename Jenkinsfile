@@ -1,8 +1,7 @@
-// Pipeline para la rama "security"
 pipeline {
     agent any
     environment {
-        DOCKER_IMAGE = "localhost:5000/djangocorepipeline:${env.BUILD_ID}"
+        DOCKER_IMAGE = "localhost:5000/djangocorepipeline:latest"
         NGINX_IMAGE = "nginx:latest"
     }
     stages {
